@@ -4,6 +4,8 @@
 #include "PID.h"
 #include <math.h>
 
+#define TWIDDLE 0
+
 // for convenience
 using json = nlohmann::json;
 
@@ -34,7 +36,20 @@ int main()
 
   PID pid;
   // TODO: Initialize the pid variable.
-
+  if(TWIDDLE)
+  {
+    //perform parameter tuning
+    pid.Init(0.01, 1.0, 0.001); //0.1,3.0,0.001
+  }
+  else
+  {
+    //directly use results from parameter tuning
+    //best params: 0.341, 4.31, 0.0 
+    pid.Init(0.341, 4.31, 0.001); 
+  } 
+  long count = 0;
+  //pid.twiddleFlag = true;
+  
   h.onMessage([&pid](uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length, uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
     // The 4 signifies a websocket message
@@ -42,10 +57,12 @@ int main()
     if (length && length > 2 && data[0] == '4' && data[1] == '2')
     {
       auto s = hasData(std::string(data).substr(0, length));
-      if (s != "") {
+      if (s != "") 
+      {
         auto j = json::parse(s);
         std::string event = j[0].get<std::string>();
-        if (event == "telemetry") {
+        if (event == "telemetry") 
+        {
           // j[1] is the data JSON object
           double cte = std::stod(j[1]["cte"].get<std::string>());
           double speed = std::stod(j[1]["speed"].get<std::string>());
@@ -57,18 +74,105 @@ int main()
           * NOTE: Feel free to play around with the throttle and speed. Maybe use
           * another PID controller to control the speed!
           */
-          
+          if(TWIDDLE)
+          {
+            if(pid.computeTwiddleErrFlag)//fabs(cte) > 0.2)
+            {
+  		        //twiddle mode
+              std::cout << "Computing initial twiddle error "  << std::endl;
+              pid.twiddleIterCount += 1;
+              if(pid.twiddleIterCount >= pid.minSteps)
+              {
+                pid.twiddleErr += cte * cte;
+              }
+              if(pid.twiddleIterCount == pid.totalSteps)
+              {
+                pid.twiddleIterCount = 0;
+                pid.twiddleErr /= (pid.totalSteps - pid.minSteps);
+                std::cout << "Initial error: " << pid.twiddleErr << std::endl;
+                pid.computeTwiddleErrFlag = false;
+                pid.twiddleFlag = true;
+                //Initialize final error
+                pid.finalErr = pid.twiddleErr;
+
+                //Step up twiddle params
+                pid.Kp_ += pid.dp[0];
+                pid.Kd_ += pid.dp[1];
+                pid.Ki_ += pid.dp[2];
+
+                //reset simulator
+                std::string msg = "42[\"reset\",{}]";
+                ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+              }
+
+            }
+
+            if(pid.twiddleFlag)
+            {
+              std::cout << "Performing twiddle " << std::endl;
+              std::cout << "Kp " << pid.Kp_ << "\t" << "Kd " << pid.Kd_ << "\t" << "Ki " << pid.Ki_ << std::endl; 
+              
+              pid.twiddleIterCount += 1;
+              if(pid.twiddleIterCount == 1)
+              {
+                std::string msg = "42[\"reset\",{}]";
+                ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+              }
+
+              
+              
+              if(pid.finalErr < 0.05)
+              {
+                pid.twiddleFlag = false;
+                pid.Kp_ = pid.bestKp;
+                pid.Kd_ = pid.bestKd;
+                pid.Ki_ = pid.bestKi;
+
+                std::cout << "Final Error " << pid.finalErr << std::endl;
+                std::cout << "Best Kp " << pid.Kp_ << "\t" << "Best Kd " << pid.Kd_ << "\t" << "Best Ki " << pid.Ki_ << std::endl; 
+                //reset simulator
+                std::string msg = "42[\"reset\",{}]";
+                ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+      			  }
+              else
+              {
+                pid.Twiddle(cte, pid.twiddleErr, pid.dp);
+                std::cout << "dp1 " << pid.dp[0] << "\t" << "dp2 " << pid.dp[1] << "\t" << "dp3 " << pid.dp[2] << std::endl;
+                double currUpdateErr = pid.updateErr/ (pid.twiddleIterCount - pid.minSteps); 
+                std::cout << "Best error: " << pid.twiddleErr << "\t" << "Update Error: " << currUpdateErr << std::endl;
+                std::cout << "dp index " << pid.pIndex << std::endl;
+              }
+
+              if(pid.twiddleErr < pid.finalErr)
+              {
+                pid.finalErr = pid.twiddleErr;
+                pid.bestKp = pid.Kp_;
+                pid.bestKd = pid.Kd_;
+                pid.bestKi = pid.Ki_;
+              }
+
+            }
+          }
+
+          //happy mode
+          pid.UpdateError(cte);
+          steer_value = pid.TotalError();
+          steer_value = (steer_value < -1.0) ? -1.0: steer_value;
+          steer_value = (steer_value > 1.0) ? 1.0: steer_value;
+
           // DEBUG
           std::cout << "CTE: " << cte << " Steering Value: " << steer_value << std::endl;
 
           json msgJson;
           msgJson["steering_angle"] = steer_value;
-          msgJson["throttle"] = 0.3;
+          msgJson["throttle"] = 0.3;//0.3;
           auto msg = "42[\"steer\"," + msgJson.dump() + "]";
           std::cout << msg << std::endl;
-          ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
+          ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);  
         }
-      } else {
+      } 
+      else 
+      {
         // Manual driving
         std::string msg = "42[\"manual\",{}]";
         ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
