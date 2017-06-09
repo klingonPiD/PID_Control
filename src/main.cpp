@@ -4,7 +4,8 @@
 #include "PID.h"
 #include <math.h>
 
-#define TWIDDLE 0
+#define TWIDDLE_TUNE 0
+#define DEBUG 0
 
 // for convenience
 using json = nlohmann::json;
@@ -36,7 +37,7 @@ int main()
 
   PID pid;
   // TODO: Initialize the pid variable.
-  if(TWIDDLE)
+  if(TWIDDLE_TUNE)
   {
     //perform parameter tuning
     pid.Init(0.01, 1.0, 0.001); //0.1,3.0,0.001
@@ -74,12 +75,15 @@ int main()
           * NOTE: Feel free to play around with the throttle and speed. Maybe use
           * another PID controller to control the speed!
           */
-          if(TWIDDLE)
+          if(TWIDDLE_TUNE)
           {
-            if(pid.computeTwiddleErrFlag)//fabs(cte) > 0.2)
+            if(pid.computeTwiddleErrFlag)
             {
-  		        //twiddle mode
-              std::cout << "Computing initial twiddle error "  << std::endl;
+              //twiddle mode
+              if(DEBUG)
+              {
+                std::cout << "Computing initial twiddle error "  << std::endl;
+              }
               pid.twiddleIterCount += 1;
               if(pid.twiddleIterCount >= pid.minSteps)
               {
@@ -89,16 +93,19 @@ int main()
               {
                 pid.twiddleIterCount = 0;
                 pid.twiddleErr /= (pid.totalSteps - pid.minSteps);
-                std::cout << "Initial error: " << pid.twiddleErr << std::endl;
+                if(DEBUG)
+                {
+                    std::cout << "Initial error: " << pid.twiddleErr << std::endl;
+                }
                 pid.computeTwiddleErrFlag = false;
                 pid.twiddleFlag = true;
                 //Initialize final error
                 pid.finalErr = pid.twiddleErr;
 
                 //Step up twiddle params
-                pid.Kp_ += pid.dp[0];
-                pid.Kd_ += pid.dp[1];
-                pid.Ki_ += pid.dp[2];
+                pid.Kp += pid.dp[0];
+                pid.Kd += pid.dp[1];
+                pid.Ki += pid.dp[2];
 
                 //reset simulator
                 std::string msg = "42[\"reset\",{}]";
@@ -109,8 +116,11 @@ int main()
 
             if(pid.twiddleFlag)
             {
-              std::cout << "Performing twiddle " << std::endl;
-              std::cout << "Kp " << pid.Kp_ << "\t" << "Kd " << pid.Kd_ << "\t" << "Ki " << pid.Ki_ << std::endl; 
+              if(DEBUG)
+              {
+	              std::cout << "Performing twiddle " << std::endl;
+	              std::cout << "Kp " << pid.Kp << "\t" << "Kd " << pid.Kd << "\t" << "Ki " << pid.Ki << std::endl; 
+              }
               
               pid.twiddleIterCount += 1;
               if(pid.twiddleIterCount == 1)
@@ -124,31 +134,34 @@ int main()
               if(pid.finalErr < 0.05)
               {
                 pid.twiddleFlag = false;
-                pid.Kp_ = pid.bestKp;
-                pid.Kd_ = pid.bestKd;
-                pid.Ki_ = pid.bestKi;
+                pid.Kp = pid.bestKp;
+                pid.Kd = pid.bestKd;
+                pid.Ki = pid.bestKi;
 
                 std::cout << "Final Error " << pid.finalErr << std::endl;
-                std::cout << "Best Kp " << pid.Kp_ << "\t" << "Best Kd " << pid.Kd_ << "\t" << "Best Ki " << pid.Ki_ << std::endl; 
+                std::cout << "Best Kp " << pid.Kp << "\t" << "Best Kd " << pid.Kd << "\t" << "Best Ki " << pid.Ki << std::endl; 
                 //reset simulator
                 std::string msg = "42[\"reset\",{}]";
                 ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
-      			  }
+  			  }
               else
               {
                 pid.Twiddle(cte, pid.twiddleErr, pid.dp);
-                std::cout << "dp1 " << pid.dp[0] << "\t" << "dp2 " << pid.dp[1] << "\t" << "dp3 " << pid.dp[2] << std::endl;
                 double currUpdateErr = pid.updateErr/ (pid.twiddleIterCount - pid.minSteps); 
-                std::cout << "Best error: " << pid.twiddleErr << "\t" << "Update Error: " << currUpdateErr << std::endl;
-                std::cout << "dp index " << pid.pIndex << std::endl;
+                if(DEBUG)
+                {
+	                std::cout << "dp1 " << pid.dp[0] << "\t" << "dp2 " << pid.dp[1] << "\t" << "dp3 " << pid.dp[2] << std::endl;
+	                std::cout << "Best error: " << pid.twiddleErr << "\t" << "Update Error: " << currUpdateErr << std::endl;
+	                std::cout << "dp index " << pid.pIndex << std::endl;
+                }
               }
 
               if(pid.twiddleErr < pid.finalErr)
               {
                 pid.finalErr = pid.twiddleErr;
-                pid.bestKp = pid.Kp_;
-                pid.bestKd = pid.Kd_;
-                pid.bestKi = pid.Ki_;
+                pid.bestKp = pid.Kp;
+                pid.bestKd = pid.Kd;
+                pid.bestKi = pid.Ki;
               }
 
             }

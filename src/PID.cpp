@@ -13,9 +13,9 @@ PID::~PID() {}
 void PID::Init(double Kp, double Kd, double Ki) 
 {
 	//todo: use twiddle to set these
-	Kp_ = Kp;
-	Kd_ = Kd;
-	Ki_ = Ki;
+	this->Kp = Kp;
+	this->Kd = Kd;
+	this->Ki = Ki;
 	time_step = 0;
 	sum_cte = 0.0;
 	twiddleIterCount = 0;
@@ -38,7 +38,7 @@ void PID::Init(double Kp, double Kd, double Ki)
 
 void PID::UpdateError(double cte) 
 {
-	p_error = -Kp_ * cte;
+	p_error = -Kp * cte;
 	if(time_step == 0)
 	{
 		prev_cte = cte;
@@ -46,9 +46,9 @@ void PID::UpdateError(double cte)
 	double cte_d = cte - prev_cte;
 	time_step += 1;
 	prev_cte = cte;
-	d_error = -Kd_ * cte_d;
+	d_error = -Kd * cte_d;
 	sum_cte += cte;
-	i_error = -Ki_ * sum_cte;
+	i_error = -Ki * sum_cte;
 }
 
 double PID::TotalError() 
@@ -66,9 +66,9 @@ void PID::Twiddle(double cte, double& best_err, std::vector<double>& dp)
 		pIndex += 1;
 		pIndex = pIndex % 3;
 		std::vector<double> p;
-		p.push_back(Kp_);
-		p.push_back(Kd_);
-		p.push_back(Ki_);
+		p.push_back(Kp);
+		p.push_back(Kd);
+		p.push_back(Ki);
 
 		double err = updateErr / (totalSteps - minSteps);
 		updateErr = 0.0;
@@ -100,9 +100,9 @@ void PID::Twiddle(double cte, double& best_err, std::vector<double>& dp)
 		{
 			p[pIndex] -= 2.0 * dp[pIndex];
 		}
-		Kp_ = p[0];
-		Kd_ = p[1];
-		Ki_ = p[2];		
+		Kp = p[0];
+		Kd = p[1];
+		Ki = p[2];		
 	}
 	else
 	{
@@ -113,84 +113,6 @@ void PID::Twiddle(double cte, double& best_err, std::vector<double>& dp)
 	}
 }
 
-
-
-// void PID::Twiddle(double cte, double& best_err, std::vector<double>& dp)
-// {
-
-// 	std::vector<double> p;
-// 	p.push_back(Kp_);
-// 	p.push_back(Kd_);
-// 	p.push_back(Ki_);
-
-// 	for (int i = 0; i < p.size(); i++)
-// 	{
-// 		if(twiddleIterCount == 1)
-// 		{
-// 			p[i] += dp[i];
-// 			Kp_ = p[0];
-// 			Kd_ = p[1];
-// 			Ki_ = p[2];
-// 		}	
-// 		if(twiddleIterCount == 200)
-// 		{
-// 			twiddleIterCount = 0;
-// 			double err = updateErr / 100.0;
-// 			updateErr = 0.0;
-// 			if (err < best_err)
-// 			{
-// 				best_err = err;
-// 				dp[i] *= 1.1;
-// 				p[i] += dp[i];
-// 				Kp_ = p[0];
-// 				Kd_ = p[1];
-// 				Ki_ = p[2];
-// 			}
-// 			else
-// 			{
-// 				p[i] -= 2 * dp[i];
-// 				Kp_ = p[0];
-// 				Kd_ = p[1];
-// 				Ki_ = p[2];
-// 				if(twiddleIterCount == 200)
-// 				{
-// 					twiddleIterCount = 0;
-// 					double err = updateErr / 100.0;
-// 					updateErr = 0.0;
-// 					if (err < best_err)
-// 					{
-// 						best_err = err;
-// 						dp[i] *= 1.1;
-// 					}
-// 					else
-// 					{
-// 						p[i] += dp[i];
-// 						Kp_ = p[0];
-// 						Kd_ = p[1];
-// 						Ki_ = p[2];
-// 						dp[i] *= 0.9;
-// 					}
-// 				}
-// 				else
-// 				{
-// 					if(twiddleIterCount >= 100)
-// 					{
-// 						updateErr += cte * cte;
-// 					}
-// 					//return
-// 				}
-// 			}	
-// 		}
-// 		else
-// 		{
-// 			if(twiddleIterCount >= 100)
-// 			{
-// 				updateErr += cte * cte;
-// 			}
-// 			//return
-// 		}
-// 	}
-// }
 
 
 

@@ -15,9 +15,9 @@ public:
   /*
   * Coefficients
   */ 
-  double Kp_;
-  double Ki_;
-  double Kd_;
+  double Kp;
+  double Ki;
+  double Kd;
 
   long long time_step;
   double prev_cte;
