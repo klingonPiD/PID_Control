@@ -11,7 +11,7 @@ The objective of this project is to implement a PID controller to control the mo
 
 # Description
 
-A PID controller stands for Proportional-integral-Derivative controller. Given an error value (between measured and expected values), the PID controller tries to smoothly minimize the deviation by applying control factors (Kp - proportional gain, Kd - derivative gain, ki - Integral gain) to the error term before feeding it back to the control system. In our case the error term is the Cross Track Error (CTE) which is the difference between the measured and expected car positions in the simulator.
+A PID controller stands for Proportional-Integral-Derivative controller. Given an error value (between measured and expected values), the PID controller tries to smoothly minimize the deviation by applying control factors (Kp - proportional gain, Kd - derivative gain, ki - Integral gain) to the error term before feeding it back to the control system. In our case the error term is the Cross Track Error (CTE) which is the difference between the measured and expected car positions in the simulator.
 
 Final Error = -Kp * CTE - Kd * (CTE(t) - CTE(t-1)) - Ki * sum(CTE)   
 
@@ -23,4 +23,4 @@ The implemented controller uses a twiddle (local hill climbing algorithm) algori
 
 # Results
 
-[![PID](https://img.youtube.com/vi/https://youtu.be/t5JhI5EGqxo/0.jpg)](https://www.youtube.com/watch?v=https://youtu.be/t5JhI5EGqxo)
+[![PID](https://img.youtube.com/vi/t5JhI5EGqxo/0.jpg)](https://youtu.be/t5JhI5EGqxo)
